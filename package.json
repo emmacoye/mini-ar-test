@@ -1,0 +1,9 @@
+{
+  "name": "mini-ar-test",
+  "version": "1.0.0",
+  "description": "MindAR.js image tracking mini test",
+  "scripts": {
+    "start": "npx serve ."
+  },
+  "license": "MIT"
+}

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>MindAR Image Tracking — Mini Test</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #111; color: #fff; font-family: sans-serif; }
+
+    #overlay {
+      position: fixed; inset: 0; z-index: 100;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.88);
+      text-align: center; padding: 24px;
+    }
+    #overlay h1  { font-size: 1.5rem; margin-bottom: 12px; color: #FF4400; }
+    #overlay p   { font-size: 0.92rem; color: #ccc; line-height: 1.6; max-width: 320px; }
+    #overlay code { background: #333; padding: 2px 6px; border-radius: 4px; }
+    #overlay button {
+      margin-top: 28px; padding: 14px 36px;
+      background: #FF4400; color: #fff; border: none;
+      border-radius: 8px; font-size: 1rem; cursor: pointer;
+      transition: background 0.2s;
+    }
+    #overlay button:hover { background: #e03a00; }
+
+    #status {
+      position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+      z-index: 200; background: rgba(0,0,0,0.65);
+      color: #fff; padding: 8px 18px; border-radius: 20px;
+      font-size: 0.82rem; pointer-events: none;
+      transition: opacity 0.4s;
+    }
+    #status.hidden { opacity: 0; }
+  </style>
+
+  <!-- MindAR (image tracking) + Three.js via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js"></script>
+</head>
+<body>
+
+  <!-- ── Instructions overlay ──────────────────────────────────────────── -->
+  <div id="overlay">
+    <h1>🛩 AR Image Tracking Test</h1>
+    <p>
+      This is a mini test for <strong>MindAR.js</strong> image tracking.<br><br>
+      Point your camera at the <strong>target image</strong>
+      (<code>target-image.png</code>).<br><br>
+      A spinning 3D box will appear on top of it once detected.
+    </p>
+    <button onclick="startAR()">Start AR</button>
+  </div>
+
+  <!-- ── Live status badge ──────────────────────────────────────────────── -->
+  <div id="status" class="hidden">🔍 Searching for target…</div>
+
+  <script>
+    async function startAR() {
+      document.getElementById('overlay').style.display = 'none';
+
+      const { MindARThree } = window.MINDAR.IMAGE;
+      const THREE = window.THREE;
+
+      // ── Init MindAR ──────────────────────────────────────────────────────
+      const mindarThree = new MindARThree({
+        container: document.body,
+        imageTargetSrc: './targets.mind',  // compiled target — see README
+        maxTrack: 1,
+        uiLoading: 'yes',
+        uiScanning: 'yes',
+        uiError: 'yes',
+      });
+
+      const { renderer, scene, camera } = mindarThree;
+
+      // ── Lighting ─────────────────────────────────────────────────────────
+      const ambient = new THREE.AmbientLight(0xffffff, 0.7);
+      scene.add(ambient);
+
+      const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+      dirLight.position.set(2, 4, 3);
+      scene.add(dirLight);
+
+      // ── 3D object: orange box ─────────────────────────────────────────────
+      // Replace BoxGeometry with your own GLTFLoader call for the JetZero model
+      const geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+      const material = new THREE.MeshStandardMaterial({
+        color: 0xFF4400,
+        roughness: 0.4,
+        metalness: 0.4,
+      });
+      const box = new THREE.Mesh(geometry, material);
+      box.position.set(0, 0, 0.25); // lift slightly above target plane
+
+      // ── Anchor: attach to image target index 0 ────────────────────────────
+      const anchor = mindarThree.addAnchor(0);
+      anchor.group.add(box);
+
+      // ── Status badge ─────────────────────────────────────────────────────
+      const statusEl = document.getElementById('status');
+
+      anchor.onTargetFound = () => {
+        statusEl.textContent = '✅ Target found!';
+        statusEl.classList.remove('hidden');
+        setTimeout(() => statusEl.classList.add('hidden'), 2500);
+      };
+
+      anchor.onTargetLost = () => {
+        statusEl.textContent = '🔍 Searching for target…';
+        statusEl.classList.remove('hidden');
+      };
+
+      // ── Render loop: spin the box ─────────────────────────────────────────
+      const clock = new THREE.Clock();
+      renderer.setAnimationLoop(() => {
+        const t = clock.getElapsedTime();
+        box.rotation.y = t * 1.2;
+        box.rotation.x = Math.sin(t * 0.5) * 0.3;
+        renderer.render(scene, camera);
+      });
+
+      // ── Start camera + tracking ───────────────────────────────────────────
+      await mindarThree.start();
+    }
+  </script>
+</body>
+</html>
