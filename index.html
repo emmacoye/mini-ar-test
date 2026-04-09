@@ -4,6 +4,22 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>MindAR Image Tracking — Mini Test</title>
+  <!--
+    mind-ar@1.2.x publishes mindar-image-three.prod.js as ES modules only (Vite lib format "es").
+    A classic <script src="..."> hits "Cannot use import statement outside a module".
+    The supported setup matches upstream docs: import map + one application <script type="module">.
+    The MindAR URL below is exactly: https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-three.prod.js
+    Three is not a second UMD script; the bare specifier "three" is resolved here (peer dependency of MindAR 1.2).
+  -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+      "mindar-image-three": "https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-three.prod.js"
+    }
+  }
+  </script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: #111; color: #fff; font-family: sans-serif; }
@@ -24,7 +40,8 @@
       border-radius: 8px; font-size: 1rem; cursor: pointer;
       transition: background 0.2s;
     }
-    #overlay button:hover { background: #e03a00; }
+    #overlay button:hover:not(:disabled) { background: #e03a00; }
+    #overlay button:disabled { opacity: 0.6; cursor: not-allowed; }
 
     #status {
       position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
@@ -35,14 +52,9 @@
     }
     #status.hidden { opacity: 0; }
   </style>
-
-  <!-- Three.js first, then MindAR -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js"></script>
 </head>
 <body>
 
-  <!-- ── Instructions overlay ──────────────────────────────────────────── -->
   <div id="overlay">
     <h1>🛩 AR Image Tracking Test</h1>
     <p>
@@ -51,23 +63,25 @@
       (<code>target-image.png</code>).<br><br>
       A spinning 3D box will appear on top of it once detected.
     </p>
-    <button onclick="startAR()">Start AR</button>
+    <button id="start-ar-btn" type="button" disabled onclick="startAR()">Loading AR engine…</button>
   </div>
 
-  <!-- ── Live status badge ──────────────────────────────────────────────── -->
   <div id="status" class="hidden">🔍 Searching for target…</div>
 
-  <script>
+  <script type="module">
+    import * as THREE from 'three';
+    import { MindARThree } from 'mindar-image-three';
+
+    window.THREE = THREE;
+    window.MINDAR = window.MINDAR || {};
+    window.MINDAR.IMAGE = Object.assign({}, window.MINDAR.IMAGE, { MindARThree });
+
     async function startAR() {
       document.getElementById('overlay').style.display = 'none';
 
-      const { MindARThree } = window.MINDAR.IMAGE;
-      const THREE = window.THREE;
-
-      // ── Init MindAR ──────────────────────────────────────────────────────
       const mindarThree = new MindARThree({
         container: document.body,
-        imageTargetSrc: './targets.mind',  // compiled target — see README
+        imageTargetSrc: './targets.mind',
         maxTrack: 1,
         uiLoading: 'yes',
         uiScanning: 'yes',
@@ -76,7 +90,6 @@
 
       const { renderer, scene, camera } = mindarThree;
 
-      // ── Lighting ─────────────────────────────────────────────────────────
       const ambient = new THREE.AmbientLight(0xffffff, 0.7);
       scene.add(ambient);
 
@@ -84,8 +97,6 @@
       dirLight.position.set(2, 4, 3);
       scene.add(dirLight);
 
-      // ── 3D object: orange box ─────────────────────────────────────────────
-      // Replace BoxGeometry with your own GLTFLoader call for the JetZero model
       const geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
       const material = new THREE.MeshStandardMaterial({
         color: 0xFF4400,
@@ -93,13 +104,11 @@
         metalness: 0.4,
       });
       const box = new THREE.Mesh(geometry, material);
-      box.position.set(0, 0, 0.25); // lift slightly above target plane
+      box.position.set(0, 0, 0.25);
 
-      // ── Anchor: attach to image target index 0 ────────────────────────────
       const anchor = mindarThree.addAnchor(0);
       anchor.group.add(box);
 
-      // ── Status badge ─────────────────────────────────────────────────────
       const statusEl = document.getElementById('status');
 
       anchor.onTargetFound = () => {
@@ -113,7 +122,6 @@
         statusEl.classList.remove('hidden');
       };
 
-      // ── Render loop: spin the box ─────────────────────────────────────────
       const clock = new THREE.Clock();
       renderer.setAnimationLoop(() => {
         const t = clock.getElapsedTime();
@@ -122,8 +130,14 @@
         renderer.render(scene, camera);
       });
 
-      // ── Start camera + tracking ───────────────────────────────────────────
       await mindarThree.start();
+    }
+
+    window.startAR = startAR;
+    const btn = document.getElementById('start-ar-btn');
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Start AR';
     }
   </script>
 </body>
