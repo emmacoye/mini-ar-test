@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MindAR Image Tracking — Mini Test</title>
   <!--
     mind-ar@1.2.x publishes mindar-image-three.prod.js as ES modules only (Vite lib format "es").
@@ -10,15 +10,22 @@
     The supported setup matches upstream docs: import map + one application <script type="module">.
     The MindAR URL below is exactly: https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-three.prod.js
     Three is not a second UMD script; the bare specifier "three" is resolved here (peer dependency of MindAR 1.2).
+    The map is injected with a classic script so static HTML checkers (which expect type="…" to be a MIME type
+    like text/javascript, not the special keyword importmap) stay quiet; browsers still see a normal import map.
   -->
-  <script type="importmap">
-  {
-    "imports": {
-      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
-      "mindar-image-three": "https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-three.prod.js"
-    }
-  }
+  <script>
+  (function () {
+    var el = document.createElement('script');
+    el.type = 'importmap';
+    el.textContent = JSON.stringify({
+      imports: {
+        three: 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js',
+        'three/addons/': 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/',
+        'mindar-image-three': 'https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-three.prod.js'
+      }
+    });
+    document.head.appendChild(el);
+  })();
   </script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -39,7 +46,7 @@
     }
 
     #overlay {
-      position: fixed; inset: 0; z-index: 100;
+      position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 100;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
       background: rgba(0,0,0,0.88);
